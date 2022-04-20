@@ -18,7 +18,7 @@ public class LevelManager : Singleton<LevelManager>
     private List<StarController> starsChosen;   // Keeps a record of the stars that were pressed.
     private VectorLine connectorLine;  // A continous line that uses the starsChosen list to connect the positions of the stars.
 
-    public struct Stats
+    public struct SolvingStats
     {
         public string timeStamp;
         public string studentName;
@@ -33,11 +33,13 @@ public class LevelManager : Singleton<LevelManager>
 
     }
 
-    public Stats gameStats;
+    public SolvingStats stats;
 
     private float startLevelTime;
     private float startSolvingTime;
-    private int pointIndex = 0;
+
+    //Keeps track on how many points were added to the line (line is created between 2 points).
+    private int pointIndex = 0;  
 
     private void Start()
     {
@@ -63,8 +65,8 @@ public class LevelManager : Singleton<LevelManager>
 
     private void HandleOkButtonPressed()
     {
-        gameStats.instructReadingTime = TimeSpan.FromSeconds(startLevelTime - Time.time);
-        Debug.Log(gameStats.instructReadingTime.ToString("mm':'ss':'ff"));
+        stats.instructReadingTime = TimeSpan.FromSeconds(startLevelTime - Time.time);
+        Debug.Log(stats.instructReadingTime.ToString("mm':'ss':'ff"));
         startSolvingTime = Time.time;
 
         environment.gameObject.SetActive(true);
@@ -73,84 +75,76 @@ public class LevelManager : Singleton<LevelManager>
 
     private void InitStats()
     {
-        gameStats.timeStamp = System.DateTime.Now.ToString();
-        gameStats.studentName = "Amit";
-        gameStats.level_num = GameManager.Instance.currentLevelIndex;
-        gameStats.playerMoves = 0;
-        gameStats.errorsMade = 0;
-        gameStats.hintsCount = 0;
+        stats.timeStamp = System.DateTime.Now.ToString();
+        stats.studentName = "Amit";
+        stats.level_num = GameManager.Instance.currentLevelIndex;
+        stats.playerMoves = 0;
+        stats.errorsMade = 0;
+        stats.hintsCount = 0;
 
 
 
     }
 
-    public void StarPressed(StarController star)
+    // Called from a star that is a part of the shape.
+    public void OnCorrectStarPressed(StarController currentStarPressed)
     {
-        Vector3 currentStarPosition = star.transform.position;
+        stats.playerMoves++;
 
-
+        //In the case this is the first correct star that was chosen.
         if (pointIndex == 0)
         {
-            starsChosen.Add(star);
-            gameStats.playerMoves++;
-            GameManager.Instance.CorrectStarChosen.Invoke(star.starIndex);
-            AddPointToLine(currentStarPosition);
+            starsChosen.Add(currentStarPressed);
+            GameManager.Instance.CorrectStarChosen.Invoke(currentStarPressed.starIndex);
+            AddPointToLine(currentStarPressed.transform.position);
 
         }
         else
         {
-            Vector3 previousStarPosition = starsChosen[pointIndex - 1].transform.position;
+            var previousStar = starsChosen[pointIndex - 1];
 
-            int answerIndex1 = starsChosen[pointIndex - 1].nextStarIndex1;
-            int answerIndex2 = starsChosen[pointIndex - 1].nextStarIndex2;
-
-            if (currentStarPosition != previousStarPosition)
+            if (currentStarPressed.starIndex != previousStar.starIndex)
             {
-                if (pointIndex > 1 && currentStarPosition == starsChosen[pointIndex - 2].transform.position)
+                //Checks if the player pressed on the star that was chosen before the last (he wants to erase the last line).
+                if (pointIndex > 1 && currentStarPressed.starIndex == starsChosen[pointIndex - 2].starIndex)
                 {
-                    gameStats.playerMoves++;
                     GameManager.Instance.CorrectStarChosen.Invoke(starsChosen[pointIndex - 2].starIndex);
                     starsChosen.Remove(starsChosen[pointIndex - 1]);
-                    RemovePointFromLine(previousStarPosition);
+                    RemovePointFromLine(previousStar.transform.position);
 
                 }
                 else
                 {
-
-                    if (star.starIndex == answerIndex1 || star.starIndex == answerIndex2)
+                    // Checks if the star pressed is one of the correct possible stars (and wasn't chosen before).
+                    if (currentStarPressed.starIndex == previousStar.nextStarIndex1 || currentStarPressed.starIndex == previousStar.nextStarIndex2)
                     {
-                        gameStats.playerMoves++;
-                        // GameManager.Instance.isGameRunning = ClosedShapeCheck(star.starIndex);
+                         GameManager.Instance.isGameRunning = ClosedShapeCheck(currentStarPressed.starIndex);
 
-                        starsChosen.Add(star);
-                        GameManager.Instance.CorrectStarChosen.Invoke(star.starIndex);
-                        AddPointToLine(currentStarPosition);
+                        starsChosen.Add(currentStarPressed);
+                        GameManager.Instance.CorrectStarChosen.Invoke(currentStarPressed.starIndex);
+                        AddPointToLine(currentStarPressed.transform.position);
 
                     }
                     else
                     {
-                        gameStats.playerMoves++;
-                        gameStats.errorsMade++;
-                        GameManager.Instance.WrongStarChosen.Invoke(star.starIndex);
+                        // The wrong star was chosen.
+                        stats.errorsMade++;
+                        GameManager.Instance.WrongStarChosen.Invoke(currentStarPressed.starIndex);
                     }
-
-
                 }
             }
         }
-
     }
-
     public void WrongStarPressed()
     {
-        gameStats.playerMoves++;
-        gameStats.errorsMade++;
-        Debug.Log("Wrong star clicked");
+        stats.playerMoves++;
+        stats.errorsMade++;
+       // Debug.Log("Wrong star clicked");
     }
 
     public void HintPressed()
     {
-        gameStats.hintsCount++;
+        stats.hintsCount++;
 
         if (pointIndex > 0)
         {
@@ -161,19 +155,19 @@ public class LevelManager : Singleton<LevelManager>
         }
     }
 
-    public bool ClosedShapeCheck()
+    public bool ClosedShapeCheck(int lastStarIndexChosen)
     {
         foreach (StarController star in starsChosen)
         {
-            if (star.starIndex == starsChosen[pointIndex - 1].starIndex)
+            if (star.starIndex == lastStarIndexChosen)
             {
-                gameStats.totalSolveTime = TimeSpan.FromSeconds(startSolvingTime - Time.time);
-                Debug.Log(gameStats.totalSolveTime.ToString("mm':'ss':'ff"));
+                stats.totalSolveTime = TimeSpan.FromSeconds(startSolvingTime - Time.time);
+               // Debug.Log(stats.totalSolveTime.ToString("mm':'ss':'ff"));
 
 
                 StatsToCSV();
                 GameManager.Instance.UpdateGameState(GameManager.GameState.POSTGAME);
-                Debug.Log("Shape Closed");
+               // Debug.Log("Shape Closed");
                 return true;
             }
         }
@@ -184,19 +178,20 @@ public class LevelManager : Singleton<LevelManager>
     public void StatsToCSV()
     {
         string[] statsInStrings = new string[8] {
-            gameStats.timeStamp,
-            gameStats.studentName,
-            gameStats.level_num.ToString(), 
-            gameStats.playerMoves.ToString(), 
-            gameStats.errorsMade.ToString(),
-            gameStats.hintsCount.ToString(),
-            gameStats.totalSolveTime.ToString("mm':'ss':'ff"),
-            gameStats.instructReadingTime.ToString("mm':'ss':'ff")
+            stats.timeStamp,
+            stats.studentName,
+            stats.level_num.ToString(), 
+            stats.playerMoves.ToString(), 
+            stats.errorsMade.ToString(),
+            stats.hintsCount.ToString(),
+            stats.totalSolveTime.ToString("mm':'ss':'ff"),
+            stats.instructReadingTime.ToString("mm':'ss':'ff")
         };
 
         CSVManager.AppendToReport(statsInStrings);
     }
 
+    //Adds a point to the line being drawn on screen to create the constellation.
     private void AddPointToLine(Vector3 point)
     {
 
@@ -206,6 +201,7 @@ public class LevelManager : Singleton<LevelManager>
         pointIndex++;
     }
 
+    //Removes a point from the line being drawn on screen to create the constellation.
     private void RemovePointFromLine(Vector3 point)
     {
 

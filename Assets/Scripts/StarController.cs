@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEditor;
 using DG.Tweening;
 
-
+//This script should be attached to all the stars that create the wanted shape.
 public class StarController : MonoBehaviour
 {
     [SerializeField] Color starColor;
@@ -36,11 +36,6 @@ public class StarController : MonoBehaviour
             StartCoroutine(FlashHalo(Color.green));
     }
 
-    private void GoToRegularColor()
-    {
-        throw new NotImplementedException();
-    }
-
     private void HandleWrongStarChosen(int index)
     {
         if (index == starIndex)
@@ -56,7 +51,7 @@ public class StarController : MonoBehaviour
 
     private void OnMouseDown()
     {
-        LevelManager.Instance.StarPressed(this);
+        LevelManager.Instance.OnCorrectStarPressed(this);
     }
 
 
@@ -65,12 +60,6 @@ public class StarController : MonoBehaviour
         animator.SetBool("isClicked", state);
     }
 
-    /* private void FlashRedHalo()
-     {
-         Tween myTween = gameObject.transform.DOScale(0.5f, 1f);
-         //  yield return myTween.WaitForCompletion();
-         myTween.PlayBackwards();
-     }*/
 
     IEnumerator FlashHalo(Color color)
     {

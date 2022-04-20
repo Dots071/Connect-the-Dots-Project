@@ -13,9 +13,6 @@ public class UIManager : Singleton<UIManager>
     [SerializeField] private GameObject endLevelScreen;
 
 
-    // [SerializeField] private 
-
-
     // Start is called before the first frame update
     void Start()
     {
@@ -32,11 +29,11 @@ public class UIManager : Singleton<UIManager>
 
 
     }
-
+/*
     private void HandleGameStarted()
     {
         mainMenu.SetActive(false);
-    }
+    }*/
 
     public void GoToHelpMenu()
     {
